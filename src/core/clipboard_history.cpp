@@ -1,20 +1,31 @@
 #include "clipboard_history.h"
+#include <algorithm>
 
 namespace core {
 
 void ClipboardHistory::push(const QString& text)
 {
-    if (!data_.empty() && data_.front() == text)
+    if (text.isEmpty())
         return;
 
-    data_.insert(data_.begin(), text);
+    auto it = std::find(data_.begin(), data_.end(), text);
+    if (it != data_.end())
+    {
+        data_.erase(it);
+    }
+
+    data_.push_front(text);
+
     if (data_.size() > MAX)
+    {
         data_.pop_back();
+    }
 }
 
-const std::vector<QString>& ClipboardHistory::items() const
+const std::deque<QString>& ClipboardHistory::items() const
 {
     return data_;
 }
 
 }
+
