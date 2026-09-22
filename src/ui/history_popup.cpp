@@ -1,5 +1,6 @@
 #include "history_popup.h"
 #include "history_model.h"
+#include "core/clipboard_item.h"
 #include <QListView>
 #include <QVBoxLayout>
 #include <QModelIndex>
@@ -18,19 +19,25 @@ HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
     list_->setModel(&model);
     list_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
+    // Show thumbnails at a comfortable size.
+    list_->setIconSize(QSize(64, 64));
+    list_->setSpacing(2);
+
     auto layout = new QVBoxLayout(this);
     layout->setContentsMargins(8, 8, 8, 8);
     layout->addWidget(list_);
 
-    auto handleSelection = [this](const QModelIndex& idx){
-        if (idx.isValid())
-        {
-            emit selected(idx.data().toString());
-            hide();
-        }
+    auto handleSelection = [this](const QModelIndex& idx) {
+        if (!idx.isValid())
+            return;
+
+        // Retrieve the full ClipboardItem from UserRole.
+        auto item = idx.data(Qt::UserRole).value<core::ClipboardItem>();
+        emit selected(item);
+        hide();
     };
 
-    connect(list_, &QListView::clicked, handleSelection);
+    connect(list_, &QListView::clicked,   handleSelection);
     connect(list_, &QListView::activated, handleSelection);
 }
 
@@ -40,7 +47,6 @@ void HistoryPopup::showAtTopLeft()
     if (screen)
     {
         QRect screenRect = screen->availableGeometry();
-        // Position at top-left with a clean 20px padding
         move(screenRect.topLeft() + QPoint(20, 20));
     }
     show();
@@ -59,5 +65,4 @@ void HistoryPopup::keyPressEvent(QKeyEvent* event)
     QWidget::keyPressEvent(event);
 }
 
-}
-
+} // namespace ui

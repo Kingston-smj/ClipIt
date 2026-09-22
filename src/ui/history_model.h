@@ -12,7 +12,7 @@ class HistoryModel : public QAbstractListModel
 public:
     explicit HistoryModel(core::ClipboardHistory& history);
 
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int      rowCount(const QModelIndex& parent = QModelIndex()) const override;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
     void refresh();
@@ -21,4 +21,4 @@ private:
     core::ClipboardHistory& history_;
 };
 
-}
+} // namespace ui

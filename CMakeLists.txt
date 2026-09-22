@@ -13,6 +13,7 @@ set(CLIPIT_SOURCES
     src/main.cpp
     src/app/application_controller.cpp
     src/app/logging.cpp
+    src/core/clipboard_item.cpp
     src/core/clipboard_history.cpp
     src/platform/clipboard_watcher_qt.cpp
     src/platform/global_hotkey.cpp        # MOC compilation unit for base class

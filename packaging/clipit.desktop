@@ -1,0 +1,13 @@
+# Install location: copy this file to ~/.config/autostart/clipit.desktop
+# Your DE (GNOME, KDE, Hyprland, etc.) will then launch ClipIt automatically at login.
+# Update Exec= to the installed binary path when doing a proper cmake --install.
+
+[Desktop Entry]
+Type=Application
+Name=ClipIt
+Comment=Clipboard history manager
+Exec=/home/kingston/repos/ClipIt/build/clipit
+Icon=edit-paste
+Categories=Utility;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QImage>
 
 namespace platform {
 
@@ -13,6 +14,7 @@ public:
 
 signals:
     void textCaptured(const QString& text);
+    void imageCaptured(const QImage& image);
 };
 
-}
+} // namespace platform
