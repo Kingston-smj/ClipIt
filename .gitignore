@@ -1,4 +1,4 @@
-# ── CMake ──────────────────────────────────────────────────────────────────────
+# ── CMake 
 build/
 cmake-build-*/
 CMakeCache.txt
@@ -9,7 +9,7 @@ install_manifest.txt
 CTestTestfile.cmake
 _deps/
 
-# ── Compiled output ────────────────────────────────────────────────────────────
+# ── Compiled output
 *.o
 *.a
 *.so
@@ -19,7 +19,7 @@ _deps/
 *.exe
 clipit
 
-# ── Qt / MOC generated files ───────────────────────────────────────────────────
+# ── Qt / MOC generated files
 moc_*.cpp
 moc_*.h
 qrc_*.cpp
@@ -58,3 +58,5 @@ LastTestsFailed.log
 *.rpm
 *.AppImage
 *.tar.gz
+
+BUGS.md
