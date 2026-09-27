@@ -21,6 +21,10 @@ set(CLIPIT_SOURCES
     src/platform/global_hotkey_socket.cpp
     src/ui/history_model.cpp
     src/ui/history_popup.cpp
+    src/ui/picker_panel.cpp
+    src/ui/emoji_panel.cpp
+    src/ui/kaomoji_panel.cpp
+    src/ui/symbol_panel.cpp
 )
 
 # ── Optional X11 backend ──────────────────────────────────────────────────────
