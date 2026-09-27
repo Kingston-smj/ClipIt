@@ -69,6 +69,15 @@ ApplicationController::ApplicationController(QObject* parent)
         }
     });
 
+    // ── Picker character paste ────────────────────────────────────────────────
+
+    QObject::connect(popup_.get(), &ui::HistoryPopup::characterPasted,
+                     this, [this](const QString& ch) {
+        // Don't add the pasted character to clipboard history.
+        ignore_next_clipboard_change_ = true;
+        QGuiApplication::clipboard()->setText(ch);
+    });
+
     // ── Global hotkey ─────────────────────────────────────────────────────────
 
     QObject::connect(hotkey_.get(), &platform::GlobalHotkey::activated,
