@@ -1,12 +1,15 @@
 #include <QApplication>
 #include <QLocalSocket>
 #include <QCoreApplication>
+#include <QProcess>
+#include <QThread>
 #include <cstdlib>
 #include <cstdio>
 #include "app/application_controller.h"
 
 // --trigger mode: poke a running ClipIt instance via its socket and exit.
-static int trigger()
+// If no instance is running, start one in the background first.
+static int trigger(const QString& selfPath)
 {
     const char* xdg = std::getenv("XDG_RUNTIME_DIR");
     if (!xdg)
@@ -20,11 +23,29 @@ static int trigger()
     QLocalSocket sock;
     sock.connectToServer(path);
 
-    if (!sock.waitForConnected(500))
+    if (!sock.waitForConnected(300))
     {
-        std::fprintf(stderr, "clipit --trigger: could not connect to %s\n"
-                             "  Is ClipIt running?\n", qPrintable(path));
-        return 1;
+        // No daemon running — start one detached, then give it a moment to bind.
+        if (!QProcess::startDetached(selfPath, {}))
+        {
+            std::fprintf(stderr, "clipit --trigger: failed to start daemon\n");
+            return 1;
+        }
+
+        // Wait up to 1 s for the daemon to bind the socket.
+        for (int i = 0; i < 10; ++i)
+        {
+            QThread::msleep(100);
+            sock.connectToServer(path);
+            if (sock.waitForConnected(200))
+                break;
+        }
+
+        if (sock.state() != QLocalSocket::ConnectedState)
+        {
+            std::fprintf(stderr, "clipit --trigger: daemon started but socket not ready\n");
+            return 1;
+        }
     }
 
     sock.disconnectFromServer();
@@ -39,7 +60,8 @@ int main(int argc, char* argv[])
         if (qstrcmp(argv[i], "--trigger") == 0)
         {
             QCoreApplication app(argc, argv);
-            return trigger();
+            // Pass our own path so trigger() can restart the daemon if needed.
+            return trigger(QString::fromLocal8Bit(argv[0]));
         }
     }
 
