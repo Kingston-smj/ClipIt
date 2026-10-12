@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstdio>
 #include "app/application_controller.h"
+#include "app/logging.h"
 
 // --trigger mode: poke a running ClipIt instance via its socket and exit.
 // If no instance is running, start one in the background first.
@@ -14,11 +15,21 @@ static int trigger(const QString& selfPath)
     const char* xdg = std::getenv("XDG_RUNTIME_DIR");
     if (!xdg)
     {
-        std::fprintf(stderr, "clipit --trigger: XDG_RUNTIME_DIR not set\n");
+        app::log_error("clipit --trigger: XDG_RUNTIME_DIR not set");
         return 1;
     }
 
-    const QString path = QString::fromUtf8(xdg) + QStringLiteral("/clipit.sock");
+    const QString runtimeDir = QString::fromUtf8(xdg);
+    const QByteArray logPath =
+        (runtimeDir + QStringLiteral("/clipit-trigger-token.log")).toLocal8Bit();
+    if (std::FILE* log = std::fopen(logPath.constData(), "w"))
+    {
+        const char* token = std::getenv("XDG_ACTIVATION_TOKEN");
+        std::fprintf(log, "XDG_ACTIVATION_TOKEN=%s\n", token ? token : "(unset)");
+        std::fclose(log);
+    }
+
+    const QString path = runtimeDir + QStringLiteral("/clipit.sock");
 
     QLocalSocket sock;
     sock.connectToServer(path);
@@ -28,7 +39,7 @@ static int trigger(const QString& selfPath)
         // No daemon running — start one detached, then give it a moment to bind.
         if (!QProcess::startDetached(selfPath, {}))
         {
-            std::fprintf(stderr, "clipit --trigger: failed to start daemon\n");
+            app::log_error("clipit --trigger: failed to start daemon");
             return 1;
         }
 
@@ -43,7 +54,7 @@ static int trigger(const QString& selfPath)
 
         if (sock.state() != QLocalSocket::ConnectedState)
         {
-            std::fprintf(stderr, "clipit --trigger: daemon started but socket not ready\n");
+            app::log_error("clipit --trigger: daemon started but socket not ready");
             return 1;
         }
     }
@@ -54,6 +65,8 @@ static int trigger(const QString& selfPath)
 
 int main(int argc, char* argv[])
 {
+    app::install_logging();
+
     // --trigger: no GUI needed, connect to socket and exit immediately.
     for (int i = 1; i < argc; ++i)
     {

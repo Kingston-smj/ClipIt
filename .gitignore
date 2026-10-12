@@ -60,3 +60,5 @@ LastTestsFailed.log
 *.tar.gz
 
 BUGS.md
+update_code.py
+.gitignore

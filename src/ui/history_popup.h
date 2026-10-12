@@ -35,6 +35,7 @@ signals:
     void characterPasted(const QString& ch);
 
 protected:
+    bool event(QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:

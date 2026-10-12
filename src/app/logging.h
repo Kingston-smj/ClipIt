@@ -1,34 +1,39 @@
 #pragma once
 
-// Minimal logging helpers — wraps qDebug/qWarning so the platform layer
-// doesn't need to pull in <QDebug> directly everywhere.
+// ClipIt messages use Qt's logging path so both application and Qt warnings
+// reach the same timestamped file.
 
-#include <cstdio>
+#include <QtLogging>
 
 namespace app {
 
+void install_logging();
+
 template<typename... Args>
-inline void log_info(const char* fmt, Args&&... args)
+inline void log_info(const char* fmt, Args... args)
 {
-    std::fputs("[clipit] INFO  ", stdout);
     if constexpr (sizeof...(args) == 0)
-        std::fputs(fmt, stdout);
+        qInfo("%s", fmt);
     else
-        // NOLINTNEXTLINE(clang-diagnostic-format-security)
-        std::fprintf(stdout, fmt, std::forward<Args>(args)...);
-    std::fputc('\n', stdout);
+        qInfo(fmt, args...);
 }
 
 template<typename... Args>
-inline void log_warn(const char* fmt, Args&&... args)
+inline void log_warn(const char* fmt, Args... args)
 {
-    std::fputs("[clipit] WARN  ", stderr);
     if constexpr (sizeof...(args) == 0)
-        std::fputs(fmt, stderr);
+        qWarning("%s", fmt);
     else
-        // NOLINTNEXTLINE(clang-diagnostic-format-security)
-        std::fprintf(stderr, fmt, std::forward<Args>(args)...);
-    std::fputc('\n', stderr);
+        qWarning(fmt, args...);
+}
+
+template<typename... Args>
+inline void log_error(const char* fmt, Args... args)
+{
+    if constexpr (sizeof...(args) == 0)
+        qCritical("%s", fmt);
+    else
+        qCritical(fmt, args...);
 }
 
 } // namespace app

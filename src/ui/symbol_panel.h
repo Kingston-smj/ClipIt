@@ -2,10 +2,11 @@
 
 #include "picker_panel.h"
 
-class QListWidget;
 class QLineEdit;
 
 namespace ui {
+
+class DiagnosticPickerList;
 
 // Grid picker backed by the compile-time symbol table.
 // Displays a searchable, scrollable grid of Unicode symbols.
@@ -22,7 +23,7 @@ private:
     void populate(const QString& filter);
 
     QLineEdit*    search_;
-    QListWidget*  grid_;
+    DiagnosticPickerList*  grid_;
     bool          populated_{false};
 };
 

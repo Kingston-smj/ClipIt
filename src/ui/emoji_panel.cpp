@@ -1,12 +1,54 @@
 #include "emoji_panel.h"
+#include "picker_diagnostics.h"
 #include "data/emoji_data.h"
 
 #include <QLineEdit>
 #include <QListWidget>
 #include <QVBoxLayout>
 #include <QFont>
+#include <QApplication>
+#include <QPainter>
+#include <QStyledItemDelegate>
 
 namespace ui {
+namespace {
+
+// BUG-003 experiment: keep native item interaction/backgrounds, but avoid
+// generic label sizing and elision for a single emoji in a known-size cell.
+class EmojiDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QSize sizeHint(const QStyleOptionViewItem&, const QModelIndex&) const override
+    {
+        return QSize(46, 46);
+    }
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option,
+               const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem background(option);
+        initStyleOption(&background, index);
+        const QString glyph = background.text;
+        background.text.clear();
+        background.features &= ~QStyleOptionViewItem::HasDisplay;
+        background.showDecorationSelected = true;
+        const QStyle* style = option.widget ? option.widget->style() : QApplication::style();
+
+        painter->save();
+        painter->setClipRect(option.rect, Qt::IntersectClip);
+        style->drawControl(QStyle::CE_ItemViewItem, &background, painter, option.widget);
+        painter->setFont(background.font);
+        painter->setPen(background.palette.color(
+            option.state & QStyle::State_Selected ? QPalette::HighlightedText : QPalette::Text));
+        painter->drawText(option.rect.adjusted(2, 2, -2, -2),
+                          Qt::AlignCenter | Qt::TextSingleLine, glyph);
+        painter->restore();
+    }
+};
+
+} // namespace
 
 EmojiPanel::EmojiPanel(QWidget* parent)
     : PickerPanel(parent)
@@ -22,7 +64,7 @@ EmojiPanel::EmojiPanel(QWidget* parent)
     layout->addWidget(search_);
 
     // ── Emoji grid ───────────────────────────────────────────────────────
-    grid_ = new QListWidget(this);
+    grid_ = new DiagnosticPickerList("emoji", this);
     grid_->setViewMode(QListView::IconMode);
     grid_->setUniformItemSizes(true);
     grid_->setGridSize(QSize(46, 46));
@@ -34,9 +76,12 @@ EmojiPanel::EmojiPanel(QWidget* parent)
     grid_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     grid_->setWordWrap(false);
     grid_->setSpacing(2);
+    grid_->setItemDelegate(new EmojiDelegate(grid_));
 
     // Use a system emoji font at a comfortable size.
     QFont emojiFont;
+    // Use the installed color font; Qt still falls back if it is unavailable.
+    emojiFont.setFamilies({QStringLiteral("Noto Color Emoji"), QStringLiteral("emoji")});
     emojiFont.setPointSize(22);
     grid_->setFont(emojiFont);
 
@@ -71,6 +116,7 @@ void EmojiPanel::onShown()
 
 void EmojiPanel::populate(const QString& filter)
 {
+    grid_->beginPopulation();
     const QString lower = filter.toLower();
 
     grid_->setUpdatesEnabled(false);   // batch: suppress per-item layout
@@ -97,6 +143,7 @@ void EmojiPanel::populate(const QString& filter)
     }
 
     grid_->setUpdatesEnabled(true);
+    grid_->endPopulation();
 }
 
 } // namespace ui

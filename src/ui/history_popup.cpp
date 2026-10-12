@@ -43,9 +43,15 @@ static constexpr TabDef kTabs[] = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
-    : QWidget(parent, Qt::Popup | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
+    : QWidget(parent,
+              (QGuiApplication::platformName().startsWith(QStringLiteral("wayland"))
+                   ? Qt::Window : Qt::Popup)
+                  | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
 {
     setObjectName("HistoryPopup");
+    setWindowTitle(QStringLiteral("ClipIt"));
+    // Closing the history window must not stop clipboard monitoring.
+    setAttribute(Qt::WA_QuitOnClose, false);
     resize(kPopupWidth, kPopupHeight);
     applyStyleSheet();
 
@@ -177,18 +183,30 @@ void HistoryPopup::switchTab(int index)
 void HistoryPopup::showAtTopLeft()
 {
     QScreen* screen = QGuiApplication::primaryScreen();
-    if (screen)
+    // Wayland places top-level windows itself; only position native popups.
+    if (screen && windowType() == Qt::Popup)
     {
         QRect screenRect = screen->availableGeometry();
         move(screenRect.topLeft() + QPoint(20, 20));
     }
     show();
-    raise();
+    if (windowType() == Qt::Popup)
+        raise();
     activateWindow();
 
     // Always open on the history tab.
     switchTab(TabHistory);
     list_->setFocus();
+}
+
+bool HistoryPopup::event(QEvent* event)
+{
+    // A Wayland top-level has no popup grab to dismiss it automatically.
+    // Window deactivation covers leaving the app, not focus changes between
+    // its search fields, lists, and tabs.
+    if (event->type() == QEvent::WindowDeactivate && windowType() == Qt::Window)
+        hide();
+    return QWidget::event(event);
 }
 
 void HistoryPopup::keyPressEvent(QKeyEvent* event)

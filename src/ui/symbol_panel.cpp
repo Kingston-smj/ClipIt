@@ -1,4 +1,5 @@
 #include "symbol_panel.h"
+#include "picker_diagnostics.h"
 #include "data/symbol_data.h"
 
 #include <QLineEdit>
@@ -22,7 +23,7 @@ SymbolPanel::SymbolPanel(QWidget* parent)
     layout->addWidget(search_);
 
     // ── Symbol grid ──────────────────────────────────────────────────────
-    grid_ = new QListWidget(this);
+    grid_ = new DiagnosticPickerList("symbol", this);
     grid_->setViewMode(QListView::IconMode);
     grid_->setUniformItemSizes(true);
     grid_->setGridSize(QSize(46, 46));
@@ -71,6 +72,7 @@ void SymbolPanel::onShown()
 
 void SymbolPanel::populate(const QString& filter)
 {
+    grid_->beginPopulation();
     const QString lower = filter.toLower();
 
     grid_->setUpdatesEnabled(false);
@@ -100,6 +102,7 @@ void SymbolPanel::populate(const QString& filter)
     }
 
     grid_->setUpdatesEnabled(true);
+    grid_->endPopulation();
 }
 
 } // namespace ui

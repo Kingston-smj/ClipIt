@@ -3,10 +3,11 @@
 #include "picker_panel.h"
 #include "data/emoji_data.h"
 
-class QListWidget;
 class QLineEdit;
 
 namespace ui {
+
+class DiagnosticPickerList;
 
 // Grid picker backed by the compile-time emoji table.
 // Displays a searchable, scrollable grid of Unicode emoji characters.
@@ -23,7 +24,7 @@ private:
     void populate(const QString& filter);
 
     QLineEdit*    search_;
-    QListWidget*  grid_;
+    DiagnosticPickerList*  grid_;
     bool          populated_{false};   // lazy: don't load until first shown
 };
 
