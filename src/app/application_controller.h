@@ -5,7 +5,7 @@
 
 namespace core { class ClipboardHistory; }
 namespace ui { class HistoryModel; class HistoryPopup; }
-namespace platform { class ClipboardWatcherQt; class GlobalHotkey; }
+namespace platform { class ClipboardWatcherQt; class GlobalHotkey; class GnomeShellBridge; }
 
 namespace app {
 
@@ -25,8 +25,9 @@ private:
     std::unique_ptr<ui::HistoryPopup>             popup_;
     std::unique_ptr<platform::ClipboardWatcherQt> watcher_;
     std::unique_ptr<platform::GlobalHotkey>       hotkey_;
-    bool ignore_next_clipboard_change_{false};
+    std::unique_ptr<platform::GnomeShellBridge>   shell_bridge_;
+    QString suppressed_text_;
+    QByteArray suppressed_png_;
 };
 
 }
-

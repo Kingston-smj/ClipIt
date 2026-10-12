@@ -13,8 +13,6 @@
 namespace ui {
 namespace {
 
-// BUG-003 experiment: keep native item interaction/backgrounds, but avoid
-// generic label sizing and elision for a single emoji in a known-size cell.
 class EmojiDelegate final : public QStyledItemDelegate
 {
 public:
@@ -99,8 +97,8 @@ EmojiPanel::EmojiPanel(QWidget* parent)
         emit characterSelected(item->data(Qt::UserRole).toString());
     };
 
-    connect(grid_, &QListWidget::itemActivated,  this, emitSelected);
-    connect(grid_, &QListWidget::itemDoubleClicked, this, emitSelected);
+    connect(grid_, &QListWidget::itemClicked,   this, emitSelected);
+    connect(grid_, &QListWidget::itemActivated, this, emitSelected);
 }
 
 void EmojiPanel::onShown()

@@ -5,7 +5,7 @@
 
 namespace platform {
 
-// Abstract interface for all global-hotkey backends.
+// Abstract interface for the global-hotkey trigger.
 class GlobalHotkey : public QObject
 {
     Q_OBJECT
@@ -17,9 +17,7 @@ public:
     // Start listening.  Emits activated() when the shortcut fires.
     virtual void start() = 0;
 
-    // Factory: picks the right backend at runtime.
-    //   - X11 session  → GlobalHotkeyX11  (XGrabKey, then falls back to socket)
-    //   - Wayland/other → GlobalHotkeySocket only
+    // Factory: creates the socket trigger used by desktop shortcuts.
     static std::unique_ptr<GlobalHotkey> create(QObject* parent = nullptr);
 
 signals:

@@ -1,6 +1,6 @@
 # ClipIt
 
-A lightweight Linux clipboard manager built with Qt/C++ that brings a **Win + V**-style clipboard history to X11 and Wayland, with a strong focus on **memory efficiency** and **minimal background overhead**. The architecture is designed to support additional platforms later.
+A lightweight Linux clipboard manager built with Qt/C++ that brings a **Win + V**-style clipboard history to Wayland, with a strong focus on **memory efficiency** and **minimal background overhead**.
 
 ---
 
@@ -24,7 +24,7 @@ The project is designed as a **systems-level learning exercise** with production
 * Duplicate prevention
 * Tabbed popup UI with dark theme (Catppuccin Mocha)
 * Emoji, kaomoji, and symbol pickers (curated compile-time data)
-* Select item to restore directly to clipboard
+* Single-click an item in any tab to restore it to the clipboard
 * Self-healing global shortcut trigger
 * Qt Model/View architecture
 
@@ -44,10 +44,9 @@ The project is designed as a **systems-level learning exercise** with production
 
 ## Global Shortcut Strategy
 
-ClipIt does **not** attempt compositor-specific key grabbing. Instead it exposes two
-complementary trigger mechanisms:
+ClipIt uses a Unix socket trigger for desktop shortcuts.
 
-### 1. Unix socket trigger *(primary on Wayland)*
+### Unix socket trigger
 
 ClipIt listens on a Unix domain socket at:
 
@@ -63,7 +62,6 @@ in your DE's own shortcut settings, pointing at a tiny launcher command:
 | **GNOME** | Settings → Keyboard → Custom Shortcuts → command below |
 | **KDE Plasma** | System Settings → Shortcuts → Custom Shortcuts → command below |
 | **Hyprland** | `bind = SUPER, V, exec, <command>` in `hyprland.conf` |
-| **sxhkd / xbindkeys** | Add keybind → command in `sxhkdrc` / `.xbindkeysrc` |
 
 Trigger command (copy this into your shortcut):
 
@@ -73,16 +71,8 @@ clipit --trigger
 
 *(Note: `clipit --trigger` is self-healing. If the background daemon isn't running, it will automatically start it before showing the popup.)*
 
-This approach works on **GNOME Wayland, KDE Wayland, Hyprland, Sway, X11** — any
+This approach works on **GNOME Wayland, KDE Wayland, Hyprland, Sway** — any
 setup that can launch a shell command from a key press.
-
-### 2. Raw `XGrabKey` *(X11 sessions)*
-
-When ClipIt detects it is running under X11 (`XDG_SESSION_TYPE=x11`), it
-registers **Super + V** directly via `XGrabKey`. This means the
-shortcut works out of the box on pure X11 desktops without any manual binding.
-
-On Wayland sessions this path is skipped entirely — use the socket trigger above.
 
 ---
 
@@ -108,10 +98,11 @@ Responsibilities:
 
 Handles OS-specific interactions.
 
-* `ClipboardWatcherQt` – listens for clipboard changes
-* `GlobalHotkeySocket` – Unix socket listener (primary, Wayland-compatible)
-* `GlobalHotkeyX11` – `XGrabKey` listener for X11 sessions
-* `GlobalHotkey::create()` – factory that selects the right backend at runtime
+* `ClipboardWatcherQt` – listens for clipboard changes on desktops that expose them
+* `GnomeShellBridge` – receives GNOME Wayland copies and requests paste through
+  a small GNOME Shell extension; no Remote Desktop session
+* `GlobalHotkeySocket` – Unix socket listener for desktop shortcuts
+* `GlobalHotkey::create()` – creates the socket trigger
 
 Responsibilities:
 
@@ -145,7 +136,7 @@ Responsibilities:
 
 ### Minimal Background Activity
 
-* Clipboard changes are received through Qt events
+* Clipboard changes are received through Qt or GNOME Shell events
 * No recurring background polling loop
 * The popup and picker data are created once and reused
 
@@ -161,14 +152,14 @@ Responsibilities:
 
 ### Requirements
 
-* Qt 6 (Core, Gui, Widgets, Network)
+* Qt 6 (Core, Gui, Widgets, Network, DBus)
 * CMake ≥ 3.20
 * C++20 compiler
 
 ### Ubuntu/Debian
 
 ```bash
-sudo apt install cmake g++ qt6-base-dev libx11-dev
+sudo apt install cmake g++ qt6-base-dev
 ```
 
 ### Build
@@ -200,6 +191,37 @@ ClipIt/
 
 * Global shortcut requires manual binding on Wayland (see strategy above)
 * No persistence (in-memory only)
+* On GNOME Wayland, complete background history and one-click paste require the
+  bundled Shell extension. It declares GNOME Shell 50 support; other major
+  versions must be tested before adding them to its metadata.
+
+### GNOME Wayland bridge (development install)
+
+After building ClipIt, package the extension and install it for the current
+user. On GNOME Wayland, log out and back in after the first install so Shell
+discovers the extension, then enable it. Later extension updates also need a
+new login to load the updated code.
+The existing Super+V shortcut still runs `clipit --trigger`.
+
+```bash
+gnome-extensions pack --out-dir build \
+  gnome-shell/clipit@kingston-smj.github.io
+gnome-extensions install --force \
+  build/clipit@kingston-smj.github.io.shell-extension.zip
+```
+
+After logging back in:
+
+```bash
+gnome-extensions enable clipit@kingston-smj.github.io
+```
+
+The extension listens to GNOME's selection-change signal and sends only text
+up to 64 KiB or PNG data up to 4 MiB to the running ClipIt daemon over the
+user's session bus. The normal 10-item, 32 MiB history limit still applies.
+The extension uses a one-shot paste timer after a selection; it does no
+background polling. If it is unavailable, the selected item remains on the
+clipboard for manual paste.
 
 ---
 

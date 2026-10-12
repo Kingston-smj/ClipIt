@@ -23,7 +23,7 @@ class HistoryPopup : public QWidget
 public:
     explicit HistoryPopup(HistoryModel& model, QWidget* parent = nullptr);
 
-    void showAtTopLeft();
+    void showPopup();
 
 signals:
     // Emits the full ClipboardItem so the controller can restore
@@ -35,7 +35,7 @@ signals:
     void characterPasted(const QString& ch);
 
 protected:
-    bool event(QEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void keyPressEvent(QKeyEvent* event) override;
 
 private:
@@ -47,6 +47,7 @@ private:
     enum Tab { TabHistory = 0, TabEmoji = 1, TabKaomoji = 2, TabSymbol = 3 };
 
     QStackedWidget* pages_;
+    QWidget*        dragHeader_;
     QListView*      list_;           // page 0 — clipboard history
     EmojiPanel*     emojiPanel_;     // page 1
     KaomojiPanel*   kaomojiPanel_;   // page 2

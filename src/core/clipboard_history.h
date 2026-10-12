@@ -12,6 +12,7 @@ class ClipboardHistory
 public:
     void push(const QString& text);
     void push(const QImage&  image);
+    void pushPng(const QByteArray& png);
 
     const std::deque<ClipboardItem>& items() const;
 

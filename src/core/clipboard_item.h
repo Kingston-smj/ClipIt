@@ -23,6 +23,7 @@ struct ClipboardItem
     // Factory helpers — defined in clipboard_item.cpp
     static ClipboardItem fromText(const QString& text);
     static ClipboardItem fromImage(const QImage& image);
+    static ClipboardItem fromPng(QByteArray png);
 
     bool operator==(const ClipboardItem& other) const;
 };

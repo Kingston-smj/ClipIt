@@ -31,6 +31,16 @@ void ClipboardHistory::push(const QImage& image)
     pushItem(std::move(item));
 }
 
+void ClipboardHistory::pushPng(const QByteArray& png)
+{
+    if (png.isEmpty() || png.size() > MemoryPolicy::MAX_IMAGE_BYTES)
+        return;
+    auto item = ClipboardItem::fromPng(png);
+    if (item.png_data.isEmpty())
+        return;
+    pushItem(std::move(item));
+}
+
 // ── Internal ──────────────────────────────────────────────────────────────────
 
 void ClipboardHistory::pushItem(ClipboardItem item)

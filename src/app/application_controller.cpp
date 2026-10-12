@@ -4,6 +4,7 @@
 #include "platform/clipboard_watcher_qt.h"
 #include "platform/global_hotkey.h"
 #include "platform/global_hotkey_socket.h"
+#include "platform/gnome_shell_bridge.h"
 #include "ui/history_model.h"
 #include "ui/history_popup.h"
 #include "app/logging.h"
@@ -22,28 +23,47 @@ ApplicationController::ApplicationController(QObject* parent)
     popup_   = std::make_unique<ui::HistoryPopup>(*model_);
     watcher_ = std::make_unique<platform::ClipboardWatcherQt>();
     hotkey_  = platform::GlobalHotkey::create();
+    shell_bridge_ = std::make_unique<platform::GnomeShellBridge>();
 
     // ── Clipboard capture ─────────────────────────────────────────────────────
 
     QObject::connect(watcher_.get(), &platform::ClipboardWatcherQt::textCaptured,
                      this, [this](const QString& text) {
-        if (ignore_next_clipboard_change_)
-        {
-            ignore_next_clipboard_change_ = false;
+        if (QGuiApplication::clipboard()->ownsClipboard() || text == suppressed_text_)
             return;
-        }
+        suppressed_text_.clear();
+        suppressed_png_.clear();
         history_->push(text);
         model_->refresh();
     });
 
     QObject::connect(watcher_.get(), &platform::ClipboardWatcherQt::imageCaptured,
                      this, [this](const QImage& image) {
-        if (ignore_next_clipboard_change_)
-        {
-            ignore_next_clipboard_change_ = false;
+        if (QGuiApplication::clipboard()->ownsClipboard())
             return;
-        }
+        suppressed_text_.clear();
+        suppressed_png_.clear();
         history_->push(image);
+        model_->refresh();
+    });
+
+    QObject::connect(shell_bridge_.get(), &platform::GnomeShellBridge::textCaptured,
+                     this, [this](const QString& text) {
+        if (text == suppressed_text_)
+            return;
+        suppressed_text_.clear();
+        suppressed_png_.clear();
+        history_->push(text);
+        model_->refresh();
+    });
+
+    QObject::connect(shell_bridge_.get(), &platform::GnomeShellBridge::pngCaptured,
+                     this, [this](const QByteArray& png) {
+        if (png == suppressed_png_)
+            return;
+        suppressed_text_.clear();
+        suppressed_png_.clear();
+        history_->pushPng(png);
         model_->refresh();
     });
 
@@ -51,14 +71,16 @@ ApplicationController::ApplicationController(QObject* parent)
 
     QObject::connect(popup_.get(), &ui::HistoryPopup::selected,
                      this, [this](const core::ClipboardItem& item) {
-        ignore_next_clipboard_change_ = true;
-
         if (item.isText())
         {
+            suppressed_text_ = item.text;
+            suppressed_png_.clear();
             QGuiApplication::clipboard()->setText(item.text);
         }
         else if (item.isImage())
         {
+            suppressed_png_ = item.png_data;
+            suppressed_text_.clear();
             // Decompress PNG bytes back to QImage and set on clipboard.
             QImage image;
             image.loadFromData(item.png_data, "PNG");
@@ -67,6 +89,7 @@ ApplicationController::ApplicationController(QObject* parent)
             mime->setImageData(image);
             QGuiApplication::clipboard()->setMimeData(mime);
         }
+        shell_bridge_->paste();
     });
 
     // ── Picker character paste ────────────────────────────────────────────────
@@ -74,8 +97,10 @@ ApplicationController::ApplicationController(QObject* parent)
     QObject::connect(popup_.get(), &ui::HistoryPopup::characterPasted,
                      this, [this](const QString& ch) {
         // Don't add the pasted character to clipboard history.
-        ignore_next_clipboard_change_ = true;
+        suppressed_text_ = ch;
+        suppressed_png_.clear();
         QGuiApplication::clipboard()->setText(ch);
+        shell_bridge_->paste();
     });
 
     // ── Global hotkey ─────────────────────────────────────────────────────────
@@ -89,6 +114,7 @@ ApplicationController::~ApplicationController() = default;
 void ApplicationController::start()
 {
     watcher_->start();
+    shell_bridge_->start();
     hotkey_->start();
 
     if (auto* sock = dynamic_cast<platform::GlobalHotkeySocket*>(hotkey_.get()))
@@ -100,7 +126,7 @@ void ApplicationController::start()
 
 void ApplicationController::showPopup()
 {
-    popup_->showAtTopLeft();
+    popup_->showPopup();
 }
 
 } // namespace app

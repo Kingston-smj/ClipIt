@@ -1,4 +1,5 @@
 #include <QApplication>
+#include <QIcon>
 #include <QLocalSocket>
 #include <QCoreApplication>
 #include <QProcess>
@@ -79,6 +80,8 @@ int main(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
+    QGuiApplication::setDesktopFileName(QStringLiteral("clipit"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/clipit-icon.png")));
     app::ApplicationController controller;
     controller.start();
     return app.exec();

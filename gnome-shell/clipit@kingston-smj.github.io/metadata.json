@@ -1,0 +1,7 @@
+{
+  "uuid": "clipit@kingston-smj.github.io",
+  "name": "ClipIt Shell Bridge",
+  "description": "Clipboard change notifications and paste for the ClipIt desktop app",
+  "shell-version": ["50"],
+  "url": "https://github.com/Kingston-smj/ClipIt"
+}

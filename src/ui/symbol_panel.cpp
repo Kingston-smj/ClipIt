@@ -55,8 +55,8 @@ SymbolPanel::SymbolPanel(QWidget* parent)
         emit characterSelected(item->data(Qt::UserRole).toString());
     };
 
-    connect(grid_, &QListWidget::itemActivated,     this, emitSelected);
-    connect(grid_, &QListWidget::itemDoubleClicked, this, emitSelected);
+    connect(grid_, &QListWidget::itemClicked,   this, emitSelected);
+    connect(grid_, &QListWidget::itemActivated, this, emitSelected);
 }
 
 void SymbolPanel::onShown()

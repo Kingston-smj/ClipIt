@@ -5,8 +5,7 @@
 
 namespace platform {
 
-// Primary trigger — works on every compositor (GNOME Wayland, KDE Wayland,
-// Hyprland, Sway, X11).
+// Trigger for compositor-managed desktop shortcuts.
 //
 // Listens on a Unix domain socket at:
 //   $XDG_RUNTIME_DIR/clipit.sock

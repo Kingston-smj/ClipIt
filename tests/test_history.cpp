@@ -1,5 +1,6 @@
 #include <QTest>
 #include <QImage>
+#include <QBuffer>
 #include "core/clipboard_history.h"
 #include "core/clipboard_item.h"
 #include "core/memory_policy.h"
@@ -67,6 +68,27 @@ private slots:
         QVERIFY(!history.items().front().png_data.isEmpty());
         QVERIFY(!history.items().front().thumbnail.isNull());
         QVERIFY(history.items().front().byte_size > 0);
+    }
+
+    void testPngBridgeCapture()
+    {
+        core::ClipboardHistory history;
+        QImage image(64, 64, QImage::Format_ARGB32);
+        image.fill(Qt::blue);
+        QByteArray png;
+        QBuffer buffer(&png);
+        QVERIFY(buffer.open(QIODevice::WriteOnly));
+        QVERIFY(image.save(&buffer, "PNG"));
+
+        history.pushPng(png);
+        QCOMPARE(history.items().size(), size_t(1));
+        QCOMPARE(history.items().front().png_data, png);
+        QVERIFY(!history.items().front().thumbnail.isNull());
+        history.pushPng(png);
+        QCOMPARE(history.items().size(), size_t(1));
+
+        history.pushPng(QByteArray(core::MemoryPolicy::MAX_IMAGE_BYTES + 1, 'x'));
+        QCOMPARE(history.items().size(), size_t(1));
     }
 
     void testByteBudgetTracking()

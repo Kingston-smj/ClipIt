@@ -9,13 +9,14 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QModelIndex>
-#include <QGuiApplication>
-#include <QScreen>
 #include <QKeyEvent>
+#include <QMouseEvent>
+#include <QWindow>
 #include <QStackedWidget>
 #include <QPushButton>
 #include <QLabel>
 #include <QFrame>
+#include <QSizeGrip>
 
 namespace ui {
 
@@ -43,21 +44,29 @@ static constexpr TabDef kTabs[] = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
-    : QWidget(parent,
-              (QGuiApplication::platformName().startsWith(QStringLiteral("wayland"))
-                   ? Qt::Window : Qt::Popup)
-                  | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
+    : QWidget(parent, Qt::Window | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint)
 {
     setObjectName("HistoryPopup");
     setWindowTitle(QStringLiteral("ClipIt"));
     // Closing the history window must not stop clipboard monitoring.
     setAttribute(Qt::WA_QuitOnClose, false);
+    setMinimumSize(320, 320);
     resize(kPopupWidth, kPopupHeight);
     applyStyleSheet();
 
     auto* root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
+
+    // A dedicated drag target leaves the list, search fields and tabs clickable.
+    auto* header = new QLabel(QStringLiteral("ClipIt"), this);
+    dragHeader_ = header;
+    header->setObjectName("dragHeader");
+    header->setFixedHeight(30);
+    header->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+    header->setCursor(Qt::OpenHandCursor);
+    header->installEventFilter(this);
+    root->addWidget(header);
 
     // ── Stacked pages ────────────────────────────────────────────────────
     pages_ = new QStackedWidget(this);
@@ -104,7 +113,7 @@ HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
 
     // ── History selection ─────────────────────────────────────────────────
     auto handleSelection = [this](const QModelIndex& idx) {
-        if (!idx.isValid()) return;
+        if (!isVisible() || !idx.isValid()) return;
         auto item = idx.data(Qt::UserRole).value<core::ClipboardItem>();
         emit selected(item);
         hide();
@@ -114,6 +123,7 @@ HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
 
     // ── Picker selections ─────────────────────────────────────────────────
     auto forwardCharacter = [this](const QString& ch) {
+        if (!isVisible()) return;
         emit characterPasted(ch);
         hide();
     };
@@ -150,6 +160,9 @@ void HistoryPopup::buildTabBar(QWidget* bar)
         tabButtons_.append(btn);
         layout->addWidget(btn);
     }
+
+    // Qt's size grip resizes the existing top-level window without polling.
+    layout->addWidget(new QSizeGrip(bar), 0, Qt::AlignBottom);
 }
 
 void HistoryPopup::switchTab(int index)
@@ -180,18 +193,9 @@ void HistoryPopup::switchTab(int index)
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-void HistoryPopup::showAtTopLeft()
+void HistoryPopup::showPopup()
 {
-    QScreen* screen = QGuiApplication::primaryScreen();
-    // Wayland places top-level windows itself; only position native popups.
-    if (screen && windowType() == Qt::Popup)
-    {
-        QRect screenRect = screen->availableGeometry();
-        move(screenRect.topLeft() + QPoint(20, 20));
-    }
     show();
-    if (windowType() == Qt::Popup)
-        raise();
     activateWindow();
 
     // Always open on the history tab.
@@ -199,14 +203,16 @@ void HistoryPopup::showAtTopLeft()
     list_->setFocus();
 }
 
-bool HistoryPopup::event(QEvent* event)
+bool HistoryPopup::eventFilter(QObject* watched, QEvent* event)
 {
-    // A Wayland top-level has no popup grab to dismiss it automatically.
-    // Window deactivation covers leaving the app, not focus changes between
-    // its search fields, lists, and tabs.
-    if (event->type() == QEvent::WindowDeactivate && windowType() == Qt::Window)
-        hide();
-    return QWidget::event(event);
+    if (watched == dragHeader_ && event->type() == QEvent::MouseButtonPress)
+    {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton && windowHandle()
+            && windowHandle()->startSystemMove())
+            return true;
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void HistoryPopup::keyPressEvent(QKeyEvent* event)
@@ -229,6 +235,13 @@ void HistoryPopup::applyStyleSheet()
             background: #1e1e2e;
             border: 1px solid #45475a;
             border-radius: 10px;
+        }
+
+        #dragHeader {
+            background: #181825;
+            color: #cdd6f4;
+            font-weight: 600;
+            padding-left: 12px;
         }
 
         /* ── List views (history + picker grids) ── */
