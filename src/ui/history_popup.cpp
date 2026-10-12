@@ -17,6 +17,11 @@
 #include <QLabel>
 #include <QFrame>
 #include <QSizeGrip>
+#include <QMenu>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QPlainTextEdit>
+#include <QMessageBox>
 
 namespace ui {
 
@@ -114,12 +119,14 @@ HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
     // ── History selection ─────────────────────────────────────────────────
     auto handleSelection = [this](const QModelIndex& idx) {
         if (!isVisible() || !idx.isValid()) return;
-        auto item = idx.data(Qt::UserRole).value<core::ClipboardItem>();
-        emit selected(item);
+        emit selected(idx.data(Qt::UserRole).toString());
         hide();
     };
     connect(list_, &QListView::clicked,   this, handleSelection);
     connect(list_, &QListView::activated, this, handleSelection);
+    list_->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(list_, &QListView::customContextMenuRequested, this,
+            [this, &model](const QPoint& pos) { showItemMenu(model, pos); });
 
     // ── Picker selections ─────────────────────────────────────────────────
     auto forwardCharacter = [this](const QString& ch) {
@@ -130,6 +137,66 @@ HistoryPopup::HistoryPopup(HistoryModel& model, QWidget* parent)
     connect(emojiPanel_,   &EmojiPanel::characterSelected,   this, forwardCharacter);
     connect(kaomojiPanel_, &KaomojiPanel::characterSelected, this, forwardCharacter);
     connect(symbolPanel_,  &SymbolPanel::characterSelected,  this, forwardCharacter);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+void HistoryPopup::showItemMenu(HistoryModel& model, const QPoint& pos)
+{
+    const QModelIndex index = list_->indexAt(pos);
+    if (!index.isValid())
+        return;
+    const QString id = index.data(Qt::UserRole).toString();
+    const auto* item = model.find(id);
+    if (!item)
+        return;
+    const bool wasPinned = item->pinned;
+    const bool isImage = item->isImage();
+    QMenu menu(this);
+    QAction* pinAction = menu.addAction(wasPinned ? tr("Unpin") : tr("Pin"));
+    QAction* editAction = menu.addAction(isImage ? tr("Edit note") : tr("Edit text"));
+    QAction* deleteAction = menu.addAction(tr("Delete"));
+    QAction* chosen = menu.exec(list_->viewport()->mapToGlobal(pos));
+    if (!chosen)
+        return;
+    if (chosen == editAction)
+    {
+        editItem(model, id);
+        return;
+    }
+    const bool ok = chosen == pinAction
+        ? (wasPinned ? model.unpin(id) : model.pin(id))
+        : chosen == deleteAction && model.remove(id);
+    if (!ok)
+        QMessageBox::warning(this, tr("ClipIt"), model.lastError().isEmpty()
+            ? tr("Could not update this item.") : model.lastError());
+}
+
+void HistoryPopup::editItem(HistoryModel& model, const QString& id)
+{
+    const auto* item = model.find(id);
+    if (!item)
+        return;
+    const bool image = item->isImage();
+    QDialog dialog(this);
+    dialog.setWindowTitle(image ? tr("Edit image note") : tr("Edit clipboard text"));
+    dialog.resize(420, 240);
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* editor = new QPlainTextEdit(&dialog);
+    editor->setPlainText(image ? item->note : item->text);
+    layout->addWidget(editor);
+    auto* buttons = new QDialogButtonBox(
+        QDialogButtonBox::Save | QDialogButtonBox::Cancel, &dialog);
+    layout->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&] {
+        if (model.edit(id, editor->toPlainText()))
+            dialog.accept();
+        else
+            QMessageBox::warning(&dialog, tr("ClipIt"), model.lastError().isEmpty()
+                ? tr("This item is no longer in history.") : model.lastError());
+    });
+    dialog.exec();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

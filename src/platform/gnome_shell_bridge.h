@@ -18,18 +18,24 @@ public:
     explicit GnomeShellBridge(QObject* parent = nullptr);
     void start();
     void paste();
+    bool isExtensionAvailable() const { return extension_available_; }
 
 public slots:
     void CaptureText(const QString& text);
     void CapturePng(const QByteArray& png);
+    void BridgeReady();
+    void BridgeStopping();
 
 signals:
     void textCaptured(const QString& text);
     void pngCaptured(const QByteArray& png);
+    void availabilityChanged(bool available);
 
 private:
     bool isShellSender() const;
-    bool active_{false};
+    void setExtensionAvailable(bool available);
+    bool registered_{false};
+    bool extension_available_{false};
     bool missing_extension_logged_{false};
 };
 

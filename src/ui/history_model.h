@@ -16,6 +16,12 @@ public:
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
     void refresh();
+    const core::ClipboardItem* find(const QString& id) const;
+    bool pin(const QString& id);
+    bool unpin(const QString& id);
+    bool edit(const QString& id, const QString& value);
+    bool remove(const QString& id);
+    QString lastError() const;
 
 private:
     core::ClipboardHistory& history_;

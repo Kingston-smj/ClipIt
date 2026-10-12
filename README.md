@@ -21,6 +21,8 @@ The project is designed as a **systems-level learning exercise** with production
 
 * Clipboard monitoring (text and image support)
 * Fixed-size history (default: 10 items)
+* Right-click Pin, Edit, and Delete for clipboard entries
+* Up to 10 pinned entries persist across restarts; images can have an editable note
 * Duplicate prevention
 * Tabbed popup UI with dark theme (Catppuccin Mocha)
 * Emoji, kaomoji, and symbol pickers (curated compile-time data)
@@ -36,7 +38,7 @@ The project is designed as a **systems-level learning exercise** with production
 * Support for:
   * HTML content
   * File paths (URI list)
-* Persistent storage (optional, bounded)
+* Optional persistence settings for users who want more than pinned items saved
 * Tray integration + autostart
 * Cross-platform support (Windows, macOS)
 
@@ -133,6 +135,7 @@ Responsibilities:
 * Per-item size caps
 * Total stored-payload budget enforcement
 * Pre-scaled image thumbnails to avoid repeated full-size preview work
+* Pinned image payloads stay on disk until selected for paste
 
 ### Minimal Background Activity
 
@@ -190,7 +193,7 @@ ClipIt/
 ## Current Limitations
 
 * Global shortcut requires manual binding on Wayland (see strategy above)
-* No persistence (in-memory only)
+* Recent, unpinned history is in memory only
 * On GNOME Wayland, complete background history and one-click paste require the
   bundled Shell extension. It declares GNOME Shell 50 support; other major
   versions must be tested before adding them to its metadata.
@@ -222,6 +225,26 @@ user's session bus. The normal 10-item, 32 MiB history limit still applies.
 The extension uses a one-shot paste timer after a selection; it does no
 background polling. If it is unavailable, the selected item remains on the
 clipboard for manual paste.
+On GNOME Wayland, ClipIt uses the Shell bridge as its only clipboard listener
+when that extension is available. Otherwise it uses Qt's clipboard watcher.
+This avoids handling the same image through both paths. The extension can
+notify ClipIt when it is enabled or disabled while ClipIt is running.
+
+### Pinned items
+
+Right-click a history entry to Pin, Edit, or Delete it. Pinned entries stay
+above recent history and survive ClipIt restarts. Edit changes a text entry's
+content or adds a note shown beside an image thumbnail; selecting an image
+still pastes the image alone. Unpin moves an entry back to recent history.
+
+Only explicitly pinned entries are saved, under ClipIt's per-user application
+data directory (normally `~/.local/share/clipit/pinned` on Linux). Text and
+image notes are stored in a small manifest; each pinned image has its own PNG
+file. The files are local and are not encrypted, so avoid pinning secrets on a
+device shared with other accounts. The pinned store is limited to 10 entries
+and 16 MiB of content; notes are limited to 1 KiB. Pinned images keep only
+their thumbnail and note in memory until selected. Saves happen on a menu
+action, with no background polling or disk write for ordinary copies.
 
 ---
 
@@ -238,10 +261,10 @@ This is not just a utility—it is a **systems engineering exercise** focused on
 
 ## Next Milestone
 
-Implement **Search and Filtering** or **Persistent Storage**:
+Implement **Search and Filtering** or broader optional persistence:
 
 * Allow users to filter their clipboard history using the same pattern implemented for the character pickers.
-* Provide an optional bounded storage backend for history persistence across reboots.
+* Optionally persist recent history as well as the explicitly pinned entries.
 
 ---
 

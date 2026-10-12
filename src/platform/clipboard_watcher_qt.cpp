@@ -7,9 +7,12 @@ namespace platform {
 
 void ClipboardWatcherQt::start()
 {
+    if (running_)
+        return;
+
     auto* cb = QGuiApplication::clipboard();
 
-    QObject::connect(cb, &QClipboard::dataChanged, [this, cb] {
+    connection_ = QObject::connect(cb, &QClipboard::dataChanged, this, [this, cb] {
         const QMimeData* mime = cb->mimeData();
         if (!mime)
             return;
@@ -32,6 +35,16 @@ void ClipboardWatcherQt::start()
                 emit textCaptured(text);
         }
     });
+    running_ = true;
+}
+
+void ClipboardWatcherQt::stop()
+{
+    if (!running_)
+        return;
+    QObject::disconnect(connection_);
+    connection_ = {};
+    running_ = false;
 }
 
 } // namespace platform

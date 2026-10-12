@@ -1,6 +1,7 @@
 #include "clipboard_item.h"
 #include <QBuffer>
 #include <QImageReader>
+#include <QUuid>
 
 namespace core {
 
@@ -9,6 +10,7 @@ namespace core {
 ClipboardItem ClipboardItem::fromText(const QString& text)
 {
     ClipboardItem item;
+    item.id        = QUuid::createUuid().toString(QUuid::WithoutBraces);
     item.type      = ClipboardType::Text;
     item.text      = text;
     item.byte_size = static_cast<qsizetype>(text.size()) * sizeof(QChar);
@@ -20,6 +22,7 @@ ClipboardItem ClipboardItem::fromText(const QString& text)
 ClipboardItem ClipboardItem::fromImage(const QImage& image)
 {
     ClipboardItem item;
+    item.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     item.type = ClipboardType::Image;
 
     // Compress to PNG — much smaller than raw pixels for storage.
@@ -52,6 +55,7 @@ ClipboardItem ClipboardItem::fromPng(QByteArray png)
     if (thumbnail.isNull())
         return item;
     item.type = ClipboardType::Image;
+    item.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     item.byte_size = png.size();
     item.png_data = std::move(png);
     item.thumbnail = std::move(thumbnail);

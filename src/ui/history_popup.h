@@ -26,9 +26,7 @@ public:
     void showPopup();
 
 signals:
-    // Emits the full ClipboardItem so the controller can restore
-    // both text and images to the system clipboard correctly.
-    void selected(const core::ClipboardItem& item);
+    void selected(const QString& id);
 
     // Emitted when the user picks an emoji, kaomoji, or symbol.
     // The controller places the character on the clipboard directly.
@@ -42,6 +40,8 @@ private:
     void switchTab(int index);
     void buildTabBar(QWidget* bar);
     void applyStyleSheet();
+    void showItemMenu(HistoryModel& model, const QPoint& pos);
+    void editItem(HistoryModel& model, const QString& id);
 
     // Pages (order must match tab indices below).
     enum Tab { TabHistory = 0, TabEmoji = 1, TabKaomoji = 2, TabSymbol = 3 };

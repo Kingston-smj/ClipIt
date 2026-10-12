@@ -80,6 +80,7 @@ int main(int argc, char* argv[])
     }
 
     QApplication app(argc, argv);
+    app.setApplicationName(QStringLiteral("clipit"));
     QGuiApplication::setDesktopFileName(QStringLiteral("clipit"));
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/clipit-icon.png")));
     app::ApplicationController controller;

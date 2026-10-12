@@ -27,7 +27,8 @@ private:
     std::unique_ptr<platform::GlobalHotkey>       hotkey_;
     std::unique_ptr<platform::GnomeShellBridge>   shell_bridge_;
     QString suppressed_text_;
-    QByteArray suppressed_png_;
+    QByteArray suppressed_png_hash_;
+    qsizetype suppressed_png_size_{0};
 };
 
 }

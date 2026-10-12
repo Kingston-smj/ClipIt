@@ -8,6 +8,9 @@ struct MemoryPolicy
 {
     // Maximum number of entries regardless of type.
     static constexpr size_t    MAX_ITEMS       = 10;
+    static constexpr size_t    MAX_PINNED_ITEMS = 10;
+    static constexpr qsizetype MAX_PINNED_BYTES = 16 * 1024 * 1024;
+    static constexpr qsizetype MAX_NOTE_BYTES   = 1024;
 
     // Per-item caps (compressed bytes).
     static constexpr qsizetype MAX_TEXT_BYTES  =  64 * 1024;        //  64 KB

@@ -1,4 +1,5 @@
 #include "gnome_shell_bridge.h"
+#include "gnome_shell_probe.h"
 #include "app/logging.h"
 #include "core/memory_policy.h"
 
@@ -17,6 +18,7 @@ constexpr auto kClipItPath = "/org/clipit/Bridge";
 constexpr auto kShellService = "org.gnome.Shell";
 constexpr auto kShellPath = "/org/clipit/Shell";
 constexpr auto kShellInterface = "org.clipit.Shell";
+
 }
 
 GnomeShellBridge::GnomeShellBridge(QObject* parent) : QObject(parent) {}
@@ -34,8 +36,20 @@ void GnomeShellBridge::start()
         app::log_warn("GnomeShellBridge: cannot register session-bus endpoint");
         return;
     }
-    active_ = true;
+    registered_ = true;
     app::log_info("GnomeShellBridge: listening for GNOME clipboard events");
+
+    // Introspection works with the installed extension as well as newer
+    // versions. The new extension also sends BridgeReady/BridgeStopping.
+    auto inspect = QDBusMessage::createMethodCall(
+        QLatin1String(kShellService), QLatin1String(kShellPath),
+        QStringLiteral("org.freedesktop.DBus.Introspectable"),
+        QStringLiteral("Introspect"));
+    const QDBusMessage reply = bus.call(inspect, QDBus::Block, 250);
+    setExtensionAvailable(
+        reply.type() == QDBusMessage::ReplyMessage &&
+        reply.arguments().size() == 1 &&
+        hasShellPasteMethod(reply.arguments().front().toString()));
 }
 
 bool GnomeShellBridge::isShellSender() const
@@ -49,7 +63,7 @@ bool GnomeShellBridge::isShellSender() const
 
 void GnomeShellBridge::CaptureText(const QString& text)
 {
-    if (!isShellSender() || text.isEmpty() ||
+    if (!extension_available_ || !isShellSender() || text.isEmpty() ||
         text.size() * qsizetype(sizeof(QChar)) > core::MemoryPolicy::MAX_TEXT_BYTES)
         return;
     emit textCaptured(text);
@@ -57,15 +71,37 @@ void GnomeShellBridge::CaptureText(const QString& text)
 
 void GnomeShellBridge::CapturePng(const QByteArray& png)
 {
-    if (!isShellSender() || png.isEmpty() ||
+    if (!extension_available_ || !isShellSender() || png.isEmpty() ||
         png.size() > core::MemoryPolicy::MAX_IMAGE_BYTES)
         return;
     emit pngCaptured(png);
 }
 
+void GnomeShellBridge::BridgeReady()
+{
+    if (isShellSender())
+        setExtensionAvailable(true);
+}
+
+void GnomeShellBridge::BridgeStopping()
+{
+    if (isShellSender())
+        setExtensionAvailable(false);
+}
+
+void GnomeShellBridge::setExtensionAvailable(bool available)
+{
+    if (extension_available_ == available)
+        return;
+    extension_available_ = available;
+    app::log_info("GnomeShellBridge: Shell extension %s",
+                  available ? "available" : "unavailable");
+    emit availabilityChanged(available);
+}
+
 void GnomeShellBridge::paste()
 {
-    if (!active_)
+    if (!registered_ || !extension_available_)
         return;
 
     // Defer until the selection handler has hidden the popup. GNOME Shell

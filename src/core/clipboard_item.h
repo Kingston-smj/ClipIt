@@ -11,10 +11,13 @@ enum class ClipboardType { Text, Image };
 
 struct ClipboardItem
 {
+    QString       id;          // stable across list reordering and restarts
     ClipboardType type      = ClipboardType::Text;
     QString       text;        // valid when type == Text
+    QString       note;        // optional label for an image
     QByteArray    png_data;    // PNG-compressed bytes, valid when type == Image
     QImage        thumbnail;   // 128×128 preview,     valid when type == Image
+    bool          pinned{false};
     qsizetype     byte_size{0};// memory footprint of this item
 
     bool isText()  const { return type == ClipboardType::Text;  }

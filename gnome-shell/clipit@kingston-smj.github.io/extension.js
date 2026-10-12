@@ -33,9 +33,11 @@ export default class ClipItBridge extends Extension {
         this._keyboard = null;
         this._pasteTimer = 0;
         this._enabled = true;
+        this._send('BridgeReady', null);
     }
 
     disable() {
+        this._send('BridgeStopping', null);
         this._enabled = false;
         if (this._pasteTimer) {
             GLib.Source.remove(this._pasteTimer);
