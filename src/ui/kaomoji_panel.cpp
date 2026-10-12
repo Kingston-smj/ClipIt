@@ -2,11 +2,32 @@
 #include "data/kaomoji_data.h"
 
 #include <QLineEdit>
+#include <QTabBar>
+#include <QLabel>
 #include <QListWidget>
 #include <QVBoxLayout>
 #include <QFont>
+#include <cstring>
 
 namespace ui {
+namespace {
+
+struct CategoryIcon { const char* category; const char* icon; };
+constexpr CategoryIcon kCategoryIcons[] = {
+    {"Happy", "(^_^)"}, {"Sad", "(T_T)"}, {"Angry", "(ಠ_ಠ)"},
+    {"Surprised", "(°o°)"}, {"Love", "(♡_♡)"}, {"Cute", "=^.^="},
+    {"Tired", "(-_-)"}, {"Misc", "(ツ)"},
+};
+
+const char* iconFor(const char* category)
+{
+    for (const auto& entry : kCategoryIcons)
+        if (std::strcmp(entry.category, category) == 0)
+            return entry.icon;
+    return category;
+}
+
+} // namespace
 
 KaomojiPanel::KaomojiPanel(QWidget* parent)
     : PickerPanel(parent)
@@ -20,6 +41,30 @@ KaomojiPanel::KaomojiPanel(QWidget* parent)
     search_->setPlaceholderText("Search kaomoji…");
     search_->setClearButtonEnabled(true);
     layout->addWidget(search_);
+
+    categories_ = new QTabBar(this);
+    categories_->setObjectName("pickerCategories");
+    categories_->setProperty("kind", "kaomoji");
+    categories_->setExpanding(false);
+    categories_->setUsesScrollButtons(true);
+    const char* previous = nullptr;
+    for (const auto& entry : data::kKaomoji)
+    {
+        if (!previous || std::strcmp(previous, entry.category) != 0)
+        {
+            const QString name = QString::fromUtf8(entry.category);
+            const int tab = categories_->addTab(QString::fromUtf8(iconFor(entry.category)));
+            categories_->setTabData(tab, name);
+            categories_->setTabToolTip(tab, name);
+            categories_->setAccessibleTabName(tab, name);
+        }
+        previous = entry.category;
+    }
+    layout->addWidget(categories_);
+
+    heading_ = new QLabel(this);
+    heading_->setObjectName("pickerHeading");
+    layout->addWidget(heading_);
 
     // ── Kaomoji grid ─────────────────────────────────────────────────────
     // 108 px cells → 3 per row in the 360 px popup.
@@ -51,6 +96,12 @@ KaomojiPanel::KaomojiPanel(QWidget* parent)
     connect(search_, &QLineEdit::textChanged, this, [this](const QString& text) {
         populate(text.trimmed());
     });
+    connect(categories_, &QTabBar::currentChanged, this, [this](int) {
+        if (search_->text().isEmpty())
+            populate({});
+        else
+            search_->clear();
+    });
 
     auto emitSelected = [this](QListWidgetItem* item) {
         if (!item) return;
@@ -75,6 +126,8 @@ void KaomojiPanel::onShown()
 void KaomojiPanel::populate(const QString& filter)
 {
     const QString lower = filter.toLower();
+    const QString selected = categories_->tabData(categories_->currentIndex()).toString();
+    heading_->setText(lower.isEmpty() ? selected : tr("Search results"));
 
     grid_->setUpdatesEnabled(false);
     grid_->clear();
@@ -82,6 +135,9 @@ void KaomojiPanel::populate(const QString& filter)
     for (std::size_t i = 0; i < data::kKaomojiCount; ++i)
     {
         const data::KaomojiEntry& e = data::kKaomoji[i];
+
+        if (lower.isEmpty() && QString::fromUtf8(e.category) != selected)
+            continue;
 
         if (!lower.isEmpty())
         {

@@ -3,15 +3,33 @@
 #include "data/emoji_data.h"
 
 #include <QLineEdit>
+#include <QTabBar>
+#include <QLabel>
 #include <QListWidget>
 #include <QVBoxLayout>
 #include <QFont>
 #include <QApplication>
 #include <QPainter>
 #include <QStyledItemDelegate>
+#include <cstring>
 
 namespace ui {
 namespace {
+
+struct CategoryIcon { const char* category; const char* icon; };
+constexpr CategoryIcon kCategoryIcons[] = {
+    {"Smileys", "😀"}, {"People", "👥"}, {"Animals", "🐾"},
+    {"Nature", "🌿"}, {"Food", "🍔"}, {"Travel", "🚗"},
+    {"Activities", "⚽"}, {"Objects", "💡"}, {"Symbols", "❤️"},
+};
+
+const char* iconFor(const char* category)
+{
+    for (const auto& entry : kCategoryIcons)
+        if (std::strcmp(entry.category, category) == 0)
+            return entry.icon;
+    return category;
+}
 
 class EmojiDelegate final : public QStyledItemDelegate
 {
@@ -61,6 +79,29 @@ EmojiPanel::EmojiPanel(QWidget* parent)
     search_->setClearButtonEnabled(true);
     layout->addWidget(search_);
 
+    categories_ = new QTabBar(this);
+    categories_->setObjectName("pickerCategories");
+    categories_->setExpanding(false);
+    categories_->setUsesScrollButtons(true);
+    const char* previous = nullptr;
+    for (const auto& entry : data::kEmoji)
+    {
+        if (!previous || std::strcmp(previous, entry.category) != 0)
+        {
+            const QString name = QString::fromUtf8(entry.category);
+            const int tab = categories_->addTab(QString::fromUtf8(iconFor(entry.category)));
+            categories_->setTabData(tab, name);
+            categories_->setTabToolTip(tab, name);
+            categories_->setAccessibleTabName(tab, name);
+        }
+        previous = entry.category;
+    }
+    layout->addWidget(categories_);
+
+    heading_ = new QLabel(this);
+    heading_->setObjectName("pickerHeading");
+    layout->addWidget(heading_);
+
     // ── Emoji grid ───────────────────────────────────────────────────────
     grid_ = new DiagnosticPickerList("emoji", this);
     grid_->setViewMode(QListView::IconMode);
@@ -91,6 +132,12 @@ EmojiPanel::EmojiPanel(QWidget* parent)
     connect(search_, &QLineEdit::textChanged, this, [this](const QString& text) {
         populate(text.trimmed());
     });
+    connect(categories_, &QTabBar::currentChanged, this, [this](int) {
+        if (search_->text().isEmpty())
+            populate({});
+        else
+            search_->clear();
+    });
 
     auto emitSelected = [this](QListWidgetItem* item) {
         if (!item) return;
@@ -116,6 +163,8 @@ void EmojiPanel::populate(const QString& filter)
 {
     grid_->beginPopulation();
     const QString lower = filter.toLower();
+    const QString selected = categories_->tabData(categories_->currentIndex()).toString();
+    heading_->setText(lower.isEmpty() ? selected : tr("Search results"));
 
     grid_->setUpdatesEnabled(false);   // batch: suppress per-item layout
     grid_->clear();
@@ -123,6 +172,9 @@ void EmojiPanel::populate(const QString& filter)
     for (std::size_t i = 0; i < data::kEmojiCount; ++i)
     {
         const data::EmojiEntry& e = data::kEmoji[i];
+
+        if (lower.isEmpty() && QString::fromUtf8(e.category) != selected)
+            continue;
 
         if (!lower.isEmpty())
         {

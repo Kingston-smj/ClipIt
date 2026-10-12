@@ -348,6 +348,35 @@ void HistoryPopup::applyStyleSheet()
             border-color: #89b4fa;
         }
 
+        QTabBar#pickerCategories {
+            background: transparent;
+            border: none;
+        }
+        QTabBar#pickerCategories::tab {
+            background: #313244;
+            color: #cdd6f4;
+            border: 1px solid #45475a;
+            border-radius: 5px;
+            font-size: 18px;
+            padding: 3px 5px;
+            margin-right: 2px;
+        }
+        QTabBar#pickerCategories::tab:selected {
+            background: #45475a;
+            color: #89b4fa;
+            border-color: #89b4fa;
+        }
+        QTabBar#pickerCategories[kind="kaomoji"]::tab {
+            font-family: monospace;
+            font-size: 13px;
+        }
+        QLabel#pickerHeading {
+            color: #a6adc8;
+            font-size: 12px;
+            font-weight: 600;
+            padding-left: 2px;
+        }
+
         /* ── Scrollbars ── */
         QScrollBar:vertical {
             background: transparent;

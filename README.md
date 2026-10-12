@@ -25,7 +25,8 @@ The project is designed as a **systems-level learning exercise** with production
 * Up to 10 pinned entries persist across restarts; images can have an editable note
 * Duplicate prevention
 * Tabbed popup UI with dark theme (Catppuccin Mocha)
-* Emoji, kaomoji, and symbol pickers (curated compile-time data)
+* Emoji, kaomoji, and symbol pickers with category navigation and search
+  (curated compile-time data)
 * Single-click an item in any tab to restore it to the clipboard
 * Self-healing global shortcut trigger
 * Qt Model/View architecture

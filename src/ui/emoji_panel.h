@@ -4,6 +4,8 @@
 #include "data/emoji_data.h"
 
 class QLineEdit;
+class QTabBar;
+class QLabel;
 
 namespace ui {
 
@@ -24,6 +26,8 @@ private:
     void populate(const QString& filter);
 
     QLineEdit*    search_;
+    QTabBar*      categories_;
+    QLabel*       heading_;
     DiagnosticPickerList*  grid_;
     bool          populated_{false};   // lazy: don't load until first shown
 };

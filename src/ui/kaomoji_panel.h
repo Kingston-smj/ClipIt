@@ -4,6 +4,8 @@
 
 class QListWidget;
 class QLineEdit;
+class QTabBar;
+class QLabel;
 
 namespace ui {
 
@@ -22,6 +24,8 @@ private:
     void populate(const QString& filter);
 
     QLineEdit*    search_;
+    QTabBar*      categories_;
+    QLabel*       heading_;
     QListWidget*  grid_;
     bool          populated_{false};
 };
