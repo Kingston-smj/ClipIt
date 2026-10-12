@@ -1,6 +1,6 @@
 # ClipIt
 
-A lightweight, cross-platform clipboard manager built with Qt/C++ that replicates the Windows **Win + V** clipboard history feature, with a strong focus on **memory efficiency** and **minimal background overhead**.
+A lightweight Linux clipboard manager built with Qt/C++ that brings a **Win + V**-style clipboard history to X11 and Wayland, with a strong focus on **memory efficiency** and **minimal background overhead**. The architecture is designed to support additional platforms later.
 
 ---
 
@@ -11,33 +11,31 @@ ClipIt monitors your system clipboard, stores a bounded history of copied items,
 The project is designed as a **systems-level learning exercise** with production-oriented architecture:
 
 * Clean separation of concerns (Core / Platform / UI)
-* Event-driven (no polling)
-* Strict memory constraints
+* Event-driven clipboard monitoring
+* Bounded clipboard-history storage
 * Cross-platform extensibility
 
 ---
 
-## Current Features (MVP)
+## Current Features
 
-* Clipboard monitoring (text support)
+* Clipboard monitoring (text and image support)
 * Fixed-size history (default: 10 items)
 * Duplicate prevention
-* Popup UI to view history
-* Select item to restore to clipboard
+* Tabbed popup UI with dark theme (Catppuccin Mocha)
+* Emoji, kaomoji, and symbol pickers (curated compile-time data)
+* Select item to restore directly to clipboard
+* Self-healing global shortcut trigger
 * Qt Model/View architecture
 
 ---
 
 ## Planned Features
 
-* Global shortcut (**Super + V**) — see strategy below
+* Search/filter inside history
 * Support for:
-
   * HTML content
   * File paths (URI list)
-  * Images (compressed storage)
-* Search/filter inside history
-* Emoji, kaomoji, and symbol pickers (no-network, compile-time data)
 * Persistent storage (optional, bounded)
 * Tray integration + autostart
 * Cross-platform support (Windows, macOS)
@@ -49,7 +47,7 @@ The project is designed as a **systems-level learning exercise** with production
 ClipIt does **not** attempt compositor-specific key grabbing. Instead it exposes two
 complementary trigger mechanisms:
 
-### 1. Socket / D-Bus trigger *(primary — works on any Wayland compositor)*
+### 1. Unix socket trigger *(primary on Wayland)*
 
 ClipIt listens on a Unix domain socket at:
 
@@ -70,16 +68,18 @@ in your DE's own shortcut settings, pointing at a tiny launcher command:
 Trigger command (copy this into your shortcut):
 
 ```bash
-echo '' | socat - UNIX-CONNECT:$XDG_RUNTIME_DIR/clipit.sock
+clipit --trigger
 ```
+
+*(Note: `clipit --trigger` is self-healing. If the background daemon isn't running, it will automatically start it before showing the popup.)*
 
 This approach works on **GNOME Wayland, KDE Wayland, Hyprland, Sway, X11** — any
 setup that can launch a shell command from a key press.
 
-### 2. Raw `XGrabKey` *(secondary — X11 / XWayland only)*
+### 2. Raw `XGrabKey` *(X11 sessions)*
 
 When ClipIt detects it is running under X11 (`XDG_SESSION_TYPE=x11`), it
-additionally registers **Super + V** directly via `XGrabKey`. This means the
+registers **Super + V** directly via `XGrabKey`. This means the
 shortcut works out of the box on pure X11 desktops without any manual binding.
 
 On Wayland sessions this path is skipped entirely — use the socket trigger above.
@@ -92,7 +92,7 @@ On Wayland sessions this path is skipped entirely — use the socket trigger abo
 
 Handles all memory-sensitive logic.
 
-* `ClipboardHistory` – bounded ring buffer
+* `ClipboardHistory` – bounded, most-recent-first history
 * `ClipboardItem` – compact data representation
 * `MemoryPolicy` – limits for items and bytes
 
@@ -110,7 +110,7 @@ Handles OS-specific interactions.
 
 * `ClipboardWatcherQt` – listens for clipboard changes
 * `GlobalHotkeySocket` – Unix socket listener (primary, Wayland-compatible)
-* `GlobalHotkeyX11` – `XGrabKey` listener (secondary, X11 / XWayland only)
+* `GlobalHotkeyX11` – `XGrabKey` listener for X11 sessions
 * `GlobalHotkey::create()` – factory that selects the right backend at runtime
 
 Responsibilities:
@@ -140,19 +140,19 @@ Responsibilities:
 
 * Hard limits on number of items
 * Per-item size caps
-* Total memory budget enforcement
-* No unbounded allocations
+* Total stored-payload budget enforcement
+* Pre-scaled image thumbnails to avoid repeated full-size preview work
 
 ### Minimal Background Activity
 
-* No polling loops
-* No timers
-* Purely event-driven
+* Clipboard changes are received through Qt events
+* No recurring background polling loop
+* The popup and picker data are created once and reused
 
 ### Simplicity Over Features
 
-* Start with text only
-* Add complexity incrementally
+* Add features incrementally
+* Keep history and per-item storage bounded
 * Avoid premature optimisation traps
 
 ---
@@ -161,14 +161,14 @@ Responsibilities:
 
 ### Requirements
 
-* Qt 6 (Core, Gui, Widgets)
+* Qt 6 (Core, Gui, Widgets, Network)
 * CMake ≥ 3.20
 * C++20 compiler
 
 ### Ubuntu/Debian
 
 ```bash
-sudo apt install cmake g++ qt6-base-dev
+sudo apt install cmake g++ qt6-base-dev libx11-dev
 ```
 
 ### Build
@@ -199,8 +199,6 @@ ClipIt/
 ## Current Limitations
 
 * Global shortcut requires manual binding on Wayland (see strategy above)
-* Text-only clipboard support
-* Basic UI (no styling or positioning logic)
 * No persistence (in-memory only)
 
 ---
@@ -218,17 +216,10 @@ This is not just a utility—it is a **systems engineering exercise** focused on
 
 ## Next Milestone
 
-Implement **global shortcut trigger** using the two-backend strategy:
+Implement **Search and Filtering** or **Persistent Storage**:
 
-1. `GlobalHotkeySocket` — `QLocalServer` listening on `$XDG_RUNTIME_DIR/clipit.sock`
-2. `GlobalHotkeyX11` — `XGrabKey` + `QAbstractNativeEventFilter`, activated only when `XDG_SESSION_TYPE=x11`
-3. `GlobalHotkey::create()` factory — runtime selection, returns the appropriate backend
-
-This introduces:
-
-* Platform-specific abstraction with a clean interface
-* Native X11 event handling
-* Unix socket IPC for compositor-agnostic triggering
+* Allow users to filter their clipboard history using the same pattern implemented for the character pickers.
+* Provide an optional bounded storage backend for history persistence across reboots.
 
 ---
 
