@@ -54,11 +54,15 @@ LastTest.log
 LastTestsFailed.log
 
 # ── Runtime / packaging ────────────────────────────────────────────────────────
+*.log
 *.deb
 *.rpm
 *.AppImage
 *.tar.gz
 
+# ── Local notes and generated source dumps ─────────────────────────────────────
 BUGS.md
+Bugs.txt
+all_code_contents.txt
+assets/launch-source/launch-cues.wav
 update_code.py
-.gitignore
