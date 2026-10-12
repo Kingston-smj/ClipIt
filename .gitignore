@@ -64,5 +64,14 @@ LastTestsFailed.log
 BUGS.md
 Bugs.txt
 all_code_contents.txt
-assets/launch-source/launch-cues.wav
 update_code.py
+
+# ── Promotional media and its generation sources ───────────────────────────────
+# Keep the application icon: CMake embeds it into the clipit executable.
+assets/*
+!assets/clipit-icon.png
+
+# Requires a live GNOME Shell session and is kept as a local integration check.
+tests/gnome_shell_bridge_smoke.js
+
+.gitignore
